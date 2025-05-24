@@ -1,42 +1,26 @@
-'use client'
-import { useState, useEffect } from 'react'
-import axios from 'axios'
-import StockChart from './StockChart'
+'use client';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import StockChart from './StockChart';
+import StockAutocomplete from './StockAutocomplete';
 
 export default function StockTracker() {
-  const [symbol, setSymbol] = useState('AAPL')
-  const [suggestions, setSuggestions] = useState([])
-  const [stockData, setStockData] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [range, setRange] = useState('30') // in days
-
-  const fetchSuggestions = async (query) => {
-    if (!query) return
-    try {
-      const response = await axios.get('https://api.polygon.io/v3/reference/tickers', {
-        params: {
-          search: query,
-          limit: 5,
-          apiKey: process.env.NEXT_PUBLIC_POLYGON_API_KEY
-        }
-      })
-      setSuggestions(response.data.results || [])
-    } catch (err) {
-      console.error('Error fetching suggestions:', err)
-    }
-  }
+  const [symbol, setSymbol] = useState('');
+  const [stockData, setStockData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [range, setRange] = useState('30'); // in days
 
   const fetchStockData = async () => {
-    if (!symbol) return
-    setLoading(true)
-    setError(null)
-    setStockData(null)
+    if (!symbol) return;
+    setLoading(true);
+    setError(null);
+    setStockData(null);
 
     try {
-      const endDate = new Date().toISOString().split('T')[0]
+      const endDate = new Date().toISOString().split('T')[0];
       const startDate = new Date(Date.now() - parseInt(range) * 24 * 60 * 60 * 1000)
-        .toISOString().split('T')[0]
+        .toISOString().split('T')[0];
 
       const response = await axios.get(`https://api.polygon.io/v2/aggs/ticker/${symbol}/range/1/day/${startDate}/${endDate}`, {
         params: {
@@ -45,11 +29,11 @@ export default function StockTracker() {
           limit: 100,
           apiKey: process.env.NEXT_PUBLIC_POLYGON_API_KEY
         }
-      })
+      });
 
-      const results = response.data.results
+      const results = response.data.results;
       if (!results || results.length === 0) {
-        throw new Error('No data returned from Polygon API')
+        throw new Error('No data returned from Polygon API');
       }
 
       const chartData = results.reverse().map(item => ({
@@ -59,12 +43,12 @@ export default function StockTracker() {
         low: item.l,
         close: item.c,
         volume: item.v
-      }))
+      }));
 
-      const latest = chartData[chartData.length - 1]
-      const first = chartData[0]
-      const change = (latest.close - first.open).toFixed(2)
-      const changePercent = ((change / first.open) * 100).toFixed(2)
+      const latest = chartData[chartData.length - 1];
+      const first = chartData[0];
+      const change = (latest.close - first.open).toFixed(2);
+      const changePercent = ((change / first.open) * 100).toFixed(2);
 
       setStockData({
         symbol,
@@ -74,22 +58,17 @@ export default function StockTracker() {
           changePercent
         },
         chart: chartData
-      })
+      });
     } catch (err) {
-      setError(err.message || 'Failed to fetch stock data')
+      setError(err.message || 'Failed to fetch stock data');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchStockData()
-  }, [symbol, range])
-
-  const handleSearch = (e) => {
-    e.preventDefault()
-    fetchStockData()
-  }
+    if (symbol) fetchStockData();
+  }, [symbol, range]);
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
@@ -97,51 +76,23 @@ export default function StockTracker() {
         <h2 className="text-xl font-semibold text-gray-800">Stock Tracker</h2>
       </div>
 
-      <form onSubmit={handleSearch} className="mb-4">
-        <div className="flex gap-2 mb-2">
-          <div className="flex-grow relative">
-            <input
-              type="text"
-              value={symbol}
-              onChange={(e) => {
-                setSymbol(e.target.value.toUpperCase())
-                fetchSuggestions(e.target.value)
-              }}
-              placeholder="Enter symbol (e.g. AAPL, MSFT, X:BTCUSD)"
-              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              disabled={loading}
-            />
-            {suggestions.length > 0 && (
-              <ul className="absolute z-10 bg-white border border-gray-300 rounded-md mt-1 w-full max-h-40 overflow-auto">
-                {suggestions.map((s) => (
-                  <li
-                    key={s.ticker}
-                    onClick={() => {
-                      setSymbol(s.ticker)
-                      setSuggestions([])
-                    }}
-                    className="px-3 py-1 hover:bg-gray-100 cursor-pointer text-sm"
-                  >
-                    {s.ticker} - {s.name}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <select
-            value={range}
-            onChange={(e) => setRange(e.target.value)}
-            className="p-2 border border-gray-300 rounded-md"
-          >
-            <option value="7">7 days</option>
-            <option value="30">30 days</option>
-            <option value="90">3 months</option>
-            <option value="180">6 months</option>
-            <option value="365">1 year</option>
-          </select>
+      <div className="flex gap-2 mb-2">
+        <div className="flex-grow relative">
+          <StockAutocomplete onSelect={(s) => setSymbol(s)} />
         </div>
-      </form>
+
+        <select
+          value={range}
+          onChange={(e) => setRange(e.target.value)}
+          className="p-2 border border-gray-300 rounded-md"
+        >
+          <option value="7">7 days</option>
+          <option value="30">30 days</option>
+          <option value="90">3 months</option>
+          <option value="180">6 months</option>
+          <option value="365">1 year</option>
+        </select>
+      </div>
 
       {loading && (
         <div className="text-center py-4 text-gray-500">Fetching stock data...</div>
@@ -192,5 +143,5 @@ export default function StockTracker() {
 
       {stockData && <StockChart data={stockData.chart} />}
     </div>
-  )
+  );
 }
