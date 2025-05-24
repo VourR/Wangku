@@ -2,143 +2,96 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import StockChart from './StockChart'
+import StockAutocomplete from './StockAutocomplete'
 
 export default function StockTracker() {
-  const [symbol, setSymbol] = useState('IBM')
+  const [symbol, setSymbol] = useState('AAPL')
   const [stockData, setStockData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [lastRefreshed, setLastRefreshed] = useState('')
 
-  const fetchStockData = async () => {
+  const fetchStockData = async (symbolToFetch = symbol) => {
     setLoading(true)
     setError(null)
+    setStockData(null)
+
     try {
-      // Clear previous data while loading new data
-      setStockData(null)
-      
-      const response = await axios.get(
-        `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${process.env.NEXT_PUBLIC_ALPHA_VANTAGE_API_KEY}`
-      )
-      
-      // Check for API error messages
-      if (response.data['Error Message']) {
-        throw new Error(response.data['Error Message'])
-      }
-      
-      if (response.data['Note']) {
-        throw new Error('API rate limit exceeded. Please wait a minute and try again.')
-      }
-      
-      // Check if data exists
-      const timeSeries = response.data['Time Series (Daily)']
-      if (!timeSeries) {
-        throw new Error('No time series data found for this symbol')
-      }
-      
-      // Get the latest refresh date
-      const metaData = response.data['Meta Data'] || {}
-      setLastRefreshed(metaData['3. Last Refreshed'] || 'N/A')
-      
-      // Prepare chart data
-      const chartData = Object.keys(timeSeries).map(date => ({
-        date,
-        open: parseFloat(timeSeries[date]['1. open']),
-        high: parseFloat(timeSeries[date]['2. high']),
-        low: parseFloat(timeSeries[date]['3. low']),
-        close: parseFloat(timeSeries[date]['4. close']),
-        volume: parseFloat(timeSeries[date]['5. volume']),
-      })).reverse()
-      
-      // Get latest quote
-      const latestDate = Object.keys(timeSeries)[0]
-      const latestQuote = {
-        symbol,
-        date: latestDate,
-        open: timeSeries[latestDate]['1. open'],
-        high: timeSeries[latestDate]['2. high'],
-        low: timeSeries[latestDate]['3. low'],
-        close: timeSeries[latestDate]['4. close'],
-        volume: timeSeries[latestDate]['5. volume'],
-        change: (
-          (parseFloat(timeSeries[latestDate]['4. close']) - 
-           parseFloat(timeSeries[latestDate]['1. open'])).toFixed(2)
-        ),
-        changePercent: (
-          ((parseFloat(timeSeries[latestDate]['4. close']) - 
-            parseFloat(timeSeries[latestDate]['1. open'])) / 
-           parseFloat(timeSeries[latestDate]['1. open']) * 100
-        ).toFixed(2))
-      }
-      
-      setStockData({
-        meta: metaData,
-        latest: latestQuote,
-        chart: chartData.slice(0, 30) // Last 30 days
+      const response = await axios.get(`https://api.polygon.io/v2/aggs/ticker/${symbolToFetch}/range/1/day/2024-01-01/2024-12-31`, {
+        params: {
+          adjusted: true,
+          sort: 'desc',
+          limit: 30,
+          apiKey: process.env.NEXT_PUBLIC_POLYGON_API_KEY
+        }
       })
-      
+
+      const results = response.data.results || []
+      if (results.length === 0) {
+        throw new Error('No stock data found for this symbol.')
+      }
+
+      const chartData = results.map(item => ({
+        date: new Date(item.t).toISOString().split('T')[0],
+        open: item.o,
+        high: item.h,
+        low: item.l,
+        close: item.c,
+        volume: item.v
+      })).reverse()
+
+      const latest = chartData[chartData.length - 1]
+      const change = (latest.close - latest.open).toFixed(2)
+      const changePercent = ((change / latest.open) * 100).toFixed(2)
+
+      setStockData({
+        latest: {
+          ...latest,
+          symbol: symbolToFetch,
+          change,
+          changePercent
+        },
+        chart: chartData
+      })
+
     } catch (err) {
-      setError(err.message || 'Failed to fetch stock data')
-      console.error('Error fetching stock data:', err)
+      console.error(err)
+      setError(err.message || 'Error fetching data')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    // Initial load with default symbol (AAPL)
-    fetchStockData()
+    fetchStockData(symbol)
   }, [])
 
-  const handleSearch = (e) => {
-    e.preventDefault()
-    if (symbol.trim()) {
-      fetchStockData()
-    }
+  const handleSelectSymbol = (selectedSymbol) => {
+    setSymbol(selectedSymbol)
+    fetchStockData(selectedSymbol)
   }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-    <div className="border-b border-gray-200 pb-4 mb-4">
-      <h2 className="text-xl font-semibold text-gray-800">Stock Tracker</h2>
-    </div>
-      <form onSubmit={handleSearch} className="mb-4">
-        <div className="flex">
-          <input
-            type="text"
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-            placeholder="Enter stock symbol (e.g. IBM, MSFT, TSLA)"
-            className="flex-grow p-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary"
-            disabled={loading}
-          />
-          <button
-            type="submit"
-            className="bg-primary text-white px-4 py-2 rounded-r-md hover:bg-secondary transition-colors disabled:opacity-50"
-            disabled={loading}
-          >
-            {loading ? 'Searching...' : 'Search'}
-          </button>
-        </div>
-      </form>
-      
+      <div className="border-b border-gray-200 pb-4 mb-4">
+        <h2 className="text-xl font-semibold text-gray-800">Stock Tracker</h2>
+      </div>
+
+      <StockAutocomplete onSelect={handleSelectSymbol} />
+
       {loading && (
         <div className="text-center py-4">
           <p>Loading stock data...</p>
-          <p className="text-sm text-gray-500">This may take a moment</p>
+          <p className="text-sm text-gray-500">Please wait a moment</p>
         </div>
       )}
-      
+
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 my-4">
           <p className="text-red-700 font-medium">Error:</p>
           <p className="text-red-600">{error}</p>
-          <p className="text-sm text-red-500 mt-2">
-            Note: Free Alpha Vantage API is limited to 5 requests per minute.
-          </p>
         </div>
       )}
-      
+
       {stockData && !loading && (
         <>
           <div className="mb-4 p-4 bg-gray-50 rounded-md">
@@ -146,8 +99,7 @@ export default function StockTracker() {
               <div>
                 <h3 className="font-bold text-lg">{stockData.latest.symbol}</h3>
                 <p className="text-sm text-gray-500">
-                  {new Date(stockData.latest.date).toLocaleDateString()} | 
-                  Last refreshed: {lastRefreshed}
+                  {new Date(stockData.latest.date).toLocaleDateString()}
                 </p>
               </div>
               <div className="text-right">
@@ -158,7 +110,7 @@ export default function StockTracker() {
                 </p>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="bg-white p-3 rounded border">
                 <p className="text-sm font-medium text-gray-500">Open</p>
@@ -180,15 +132,9 @@ export default function StockTracker() {
               </div>
             </div>
           </div>
-          
+
           <StockChart data={stockData.chart} />
         </>
-      )}
-      
-      {!loading && !error && !stockData && (
-        <div className="text-center py-8 text-gray-500">
-          <p>No stock data available</p>
-        </div>
       )}
     </div>
   )

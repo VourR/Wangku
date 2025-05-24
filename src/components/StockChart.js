@@ -1,5 +1,14 @@
 'use client'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts'
 
 export default function StockChart({ data }) {
   if (!data || data.length === 0) {
@@ -18,17 +27,22 @@ export default function StockChart({ data }) {
           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis 
-            dataKey="date" 
-            tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          <XAxis
+            dataKey="date"
+            tickFormatter={(value) =>
+              new Date(value).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+              })
+            }
             tick={{ fontSize: 12 }}
           />
-          <YAxis 
-            domain={['auto', 'auto']} 
+          <YAxis
+            domain={['auto', 'auto']}
             tickFormatter={(value) => `$${value}`}
             tick={{ fontSize: 12 }}
           />
-          <Tooltip 
+          <Tooltip
             formatter={(value) => [`$${value}`, 'Price']}
             labelFormatter={(label) => `Date: ${new Date(label).toLocaleDateString()}`}
           />

@@ -17,7 +17,7 @@ export default function About() {
             <li>Pencarian cepat untuk menemukan saham atau mata uang tertentu</li>
           </ul>
           <p className="text-sm text-gray-500">
-            Aplikasi ini menggunakan API dari ExchangeRate API untuk data nilai tukar mata uang dan Alpha Vantage API untuk data saham.
+            Aplikasi ini menggunakan API dari ExchangeRate API untuk data nilai tukar mata uang dan Polygon API untuk data saham.
           </p>
         </div>
       </div>
