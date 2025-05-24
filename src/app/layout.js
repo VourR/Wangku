@@ -12,6 +12,9 @@ const limelight = Limelight({
 export const metadata = {
   title: 'Wangku - Currency & Stock Tracker',
   description: 'Real-Time Currency and Stock Tracker',
+  icons: {
+    icon: '/favicon.ico', 
+  },
 }
 
 export default function RootLayout({ children }) {
