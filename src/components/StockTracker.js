@@ -7,20 +7,52 @@ import StockAutocomplete from './StockAutocomplete';
 export default function StockTracker() {
   const [symbol, setSymbol] = useState('');
   const [stockData, setStockData] = useState(null);
+  const [companyLogo, setCompanyLogo] = useState(null);
+  const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [range, setRange] = useState('30'); // in days
+  const [range, setRange] = useState('30');
+
+  const fetchCompanyInfo = async (tickerSymbol) => {
+    try {
+      const response = await axios.get(`https://api.polygon.io/v3/reference/tickers/${tickerSymbol}`, {
+        params: {
+          apiKey: process.env.NEXT_PUBLIC_POLYGON_API_KEY
+        }
+      });
+
+      const tickerData = response.data.results;
+      if (tickerData) {
+        setCompanyLogo(tickerData.branding?.logo_url || null);
+        setCompanyName(tickerData.name || tickerSymbol);
+      }
+    } catch (err) {
+      console.log('Failed to fetch company info:', err.message);
+      // Tidak perlu throw error, karena logo adalah fitur tambahan
+      setCompanyLogo(null);
+      setCompanyName(tickerSymbol);
+    }
+  };
 
   const fetchStockData = async () => {
     if (!symbol) return;
     setLoading(true);
     setError(null);
     setStockData(null);
+    setCompanyLogo(null);
+    setCompanyName('');
 
     try {
-      const endDate = new Date().toISOString().split('T')[0];
-      const startDate = new Date(Date.now() - parseInt(range) * 24 * 60 * 60 * 1000)
-        .toISOString().split('T')[0];
+      // Fetch company info first
+      await fetchCompanyInfo(symbol);
+
+      // Use a more reliable date calculation
+      const today = new Date();
+      const endDate = today.toISOString().split('T')[0];
+      
+      const startDateObj = new Date(today);
+      startDateObj.setDate(startDateObj.getDate() - parseInt(range));
+      const startDate = startDateObj.toISOString().split('T')[0];
 
       const response = await axios.get(`https://api.polygon.io/v2/aggs/ticker/${symbol}/range/1/day/${startDate}/${endDate}`, {
         params: {
@@ -32,9 +64,7 @@ export default function StockTracker() {
       });
 
       const results = response.data.results;
-      if (!results || results.length === 0) {
-        throw new Error('No data returned from Polygon API');
-      }
+      if (!results || results.length === 0) throw new Error('No data returned from Polygon API');
 
       const chartData = results.reverse().map(item => ({
         date: new Date(item.t).toISOString().split('T')[0],
@@ -71,7 +101,7 @@ export default function StockTracker() {
   }, [symbol, range]);
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
+    <div className="bg-white p-6 rounded-lg shadow-md transition-transform duration-300 hover:shadow-xl hover:-translate-y-1 max-w-2xl mx-auto">
       <div className="border-b border-gray-200 pb-4 mb-4">
         <h2 className="text-xl font-semibold text-gray-800">Stock Tracker</h2>
       </div>
@@ -106,10 +136,29 @@ export default function StockTracker() {
 
       {stockData && !loading && (
         <div className="bg-gray-50 p-4 rounded-md mb-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="font-bold text-lg">{stockData.symbol}</h3>
-              <p className="text-sm text-gray-500">{stockData.latest.date}</p>
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-3">
+              {companyLogo ? (
+                <img 
+                  src={`${companyLogo}?apikey=${process.env.NEXT_PUBLIC_POLYGON_API_KEY}`}
+                  alt={`${stockData.symbol} logo`}
+                  className="w-12 h-12 rounded-lg object-contain bg-white p-1 shadow-sm"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-500 font-bold text-sm">{stockData.symbol.charAt(0)}</span>
+                </div>
+              )}
+              <div>
+                <h3 className="font-bold text-lg">{stockData.symbol}</h3>
+                {companyName && companyName !== stockData.symbol && (
+                  <p className="text-sm text-gray-600">{companyName}</p>
+                )}
+                <p className="text-sm text-gray-500">{stockData.latest.date}</p>
+              </div>
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold">${stockData.latest.close}</p>

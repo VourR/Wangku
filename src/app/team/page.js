@@ -36,9 +36,9 @@ export default function TeamPage() {
     {
       name: 'Rajwa Vourza Tsaqifa',
       role: 'Project Manager & System Analyst',
-      image: 'https://randomuser.me/api/portraits/men/68.jpg',
+      image: 'https://i.pinimg.com/736x/b2/60/94/b26094970505bcd59c2e5fe8b6f41cf0.jpg',
       socials: [
-        { icon: <FaGithub />, url: '#' },
+        { icon: <FaGithub />, url: 'https://github.com/VourR/' },
         { icon: <FaLinkedin />, url: '#' },
         { icon: <FaTwitter />, url: '#' }
       ]

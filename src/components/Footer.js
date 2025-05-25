@@ -38,7 +38,7 @@ export default function Footer() {
           
           <div className="flex space-x-4 mt-4 md:mt-0">
             <a 
-              href="#" 
+              href="https://github.com/VourR/Wangku/" 
               className="text-gray-500 hover:text-primary transition-colors"
               aria-label="GitHub"
             >
