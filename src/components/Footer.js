@@ -23,7 +23,7 @@ export default function Footer() {
               Tentang
             </Link>
             <Link 
-              href="#" 
+              href="/privacypolicy" 
               className="text-gray-600 hover:text-primary transition-colors"
             >
               Kebijakan Privasi
